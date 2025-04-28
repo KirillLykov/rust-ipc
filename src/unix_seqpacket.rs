@@ -21,10 +21,12 @@ pub struct UnixSeqpacketWrapper {
 impl UnixSeqpacketWrapper {
     pub fn unix_connect() -> Self {
         let stream = UnixSeqpacketConn::connect(UNIX_SOCKET_PATH).unwrap();
+        stream.set_nonblocking(true).unwrap();
         Self { stream }
     }
     pub fn from_listener(listener: UnixSeqpacketListener) -> Self {
         let (server, _addr) = listener.accept_unix_addr().unwrap();
+        server.set_nonblocking(true).unwrap();
         Self { stream: server }
     }
 }
@@ -73,18 +75,43 @@ impl UnixSeqpacketRunner {
 
     pub fn run(&mut self, n: usize, print: bool) {
         let start = Instant::now();
-        let mut buf = vec![0u8; self.data_size];
+        let mut sent = 0;
+        let scope = std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut sent = 0;
+                while sent < n {
+                    if self.wrapper.stream.send(&self.request_data).is_err() {
+                        std::thread::sleep(Duration::from_millis(1));
+                        continue;
+                    };
+                    sent += 1;
+                }
+            });
 
-        for _ in 0..n {
-            self.wrapper.stream.send(&self.request_data).unwrap();
-            let len = self.wrapper.stream.recv(&mut buf).unwrap();
+            s.spawn(|| {
+                let mut recvd = 0;
+                let mut buf = vec![0u8; self.data_size];
+                while recvd < n {
+                    let len = loop {
+                        match self.wrapper.stream.recv(&mut buf) {
+                            Ok(l) => {
+                                break l;
+                            }
+                            Err(_) => {
+                                std::thread::sleep(Duration::from_millis(1));
+                                continue;
+                            }
+                        }
+                    };
+                    recvd += 1;
 
-            #[cfg(debug_assertions)]
-            if buf[..len] != self.response_data[..len] {
-                panic!("Sent request didn't get expected response");
-            }
-        }
-
+                    #[cfg(debug_assertions)]
+                    if buf[..len] != self.response_data[..len] {
+                        panic!("Sent request didn't get expected response");
+                    }
+                }
+            });
+        });
         if print {
             let elapsed = start.elapsed();
             let res = ExecutionResult::new(
