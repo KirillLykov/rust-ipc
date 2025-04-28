@@ -8,6 +8,7 @@ pub mod shmem;
 pub mod tcp;
 pub mod udp;
 pub mod unix_datagram;
+pub mod unix_seqpacket;
 pub mod unix_stream;
 
 use rand::rngs::StdRng;

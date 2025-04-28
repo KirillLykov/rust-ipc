@@ -80,7 +80,7 @@ impl UnixStreamRunner {
         if print {
             let elapsed = start.elapsed();
             let res = ExecutionResult::new(
-                format!("Unix TCP Socket - {}KB", self.data_size / KB).to_string(),
+                format!("Unix Stream Socket - {}KB", self.data_size / KB).to_string(),
                 elapsed,
                 n,
             );

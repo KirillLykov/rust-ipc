@@ -6,6 +6,7 @@ use ipc::shmem::ShmemRunner;
 use ipc::tcp::TcpRunner;
 use ipc::udp::UdpRunner;
 use ipc::unix_datagram::UnixDatagramRunner;
+use ipc::unix_seqpacket::UnixSeqpacketRunner;
 use ipc::unix_stream::UnixStreamRunner;
 use ipc::{cpu_warmup, KB};
 
@@ -13,7 +14,7 @@ fn main() {
     let args = Cli::parse();
     match args.method {
         Method::Stdout => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut pr = PipeRunner::new(data_size);
 
@@ -24,7 +25,7 @@ fn main() {
             }
         }
         Method::Shmem => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = ShmemRunner::new(args.start_child, data_size);
 
@@ -35,7 +36,7 @@ fn main() {
             }
         }
         Method::Tcp => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = TcpRunner::new(args.start_child, true, data_size);
 
@@ -46,7 +47,7 @@ fn main() {
             }
         }
         Method::Udp => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = UdpRunner::new(true, data_size);
 
@@ -58,7 +59,7 @@ fn main() {
             }
         }
         Method::Iceoryx => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = IceoryxRunner::new(true, data_size);
 
@@ -69,7 +70,7 @@ fn main() {
             }
         }
         Method::Mmap => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = MmapRunner::new(true, data_size);
 
@@ -80,7 +81,7 @@ fn main() {
             }
         }
         Method::Unixstream => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = UnixStreamRunner::new(true, data_size);
 
@@ -91,9 +92,20 @@ fn main() {
             }
         }
         Method::Unixdatagram => {
-            for data_size in 1..=args.kb_max {
+            for data_size in 0..=args.kb_max {
                 let data_size = 2u64.pow(data_size as u32) as usize * KB;
                 let mut runner = UnixDatagramRunner::new(true, data_size);
+
+                core_affinity::set_for_current(core_affinity::CoreId { id: 1 });
+                cpu_warmup();
+
+                runner.run(args.number, true);
+            }
+        }
+        Method::Unixseqpacket => {
+            for data_size in 0..=args.kb_max {
+                let data_size = 2u64.pow(data_size as u32) as usize * KB;
+                let mut runner = UnixSeqpacketRunner::new(true, data_size);
 
                 core_affinity::set_for_current(core_affinity::CoreId { id: 1 });
                 cpu_warmup();
@@ -115,6 +127,7 @@ enum Method {
     Mmap,
     Unixstream,
     Unixdatagram,
+    Unixseqpacket,
 }
 
 #[derive(Parser, Debug)]

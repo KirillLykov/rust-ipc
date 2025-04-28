@@ -1,5 +1,5 @@
 use divan::Bencher;
-use ipc::cpu_warmup;
+use ipc::{cpu_warmup, unix_seqpacket::UnixSeqpacketRunner};
 
 // This affects the number cycles of to execute each method for. In the Divan output, the
 // time per function will be displayed for the total number of cycles, but the throughput
@@ -143,5 +143,20 @@ fn iceoryx(bencher: Bencher, data_size: usize) {
         .counter(divan::counter::ItemsCount::new(n))
         .bench_local(move || {
             unix_udp_runner.run(n, false);
+        });
+}
+
+#[divan::bench(args = LENS)]
+fn unix_seqpacket(bencher: Bencher, data_size: usize) {
+    let n = N;
+    let mut unix_seqpacket_runner = UnixSeqpacketRunner::new(true, data_size * KB);
+
+    core_affinity::set_for_current(core_affinity::CoreId { id: 1 });
+    cpu_warmup();
+
+    bencher
+        .counter(divan::counter::ItemsCount::new(n))
+        .bench_local(move || {
+            unix_seqpacket_runner.run(n, false);
         });
 }
