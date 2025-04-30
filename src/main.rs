@@ -1,4 +1,5 @@
 use clap::Parser;
+use ipc::ale_runner::AleRunner;
 use ipc::iceoryx::IceoryxRunner;
 use ipc::mmap::MmapRunner;
 use ipc::pipes::PipeRunner;
@@ -113,6 +114,18 @@ fn main() {
                 runner.run(args.number, true);
             }
         }
+        Method::Aleringbuf => {
+            for data_size in 0..=args.kb_max {
+                assert!(data_size == 0);
+                let data_size = 2u64.pow(data_size as u32) as usize * KB;
+                let mut runner = AleRunner::new(true, data_size);
+
+                core_affinity::set_for_current(core_affinity::CoreId { id: 1 });
+                cpu_warmup();
+
+                runner.run(args.number, true);
+            }
+        }
     }
 }
 
@@ -128,6 +141,7 @@ enum Method {
     Unixstream,
     Unixdatagram,
     Unixseqpacket,
+    Aleringbuf,
 }
 
 #[derive(Parser, Debug)]

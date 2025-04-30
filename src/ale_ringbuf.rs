@@ -6,15 +6,12 @@ use {
     std::{
         ffi::CString,
         io::{self, ErrorKind},
-        marker::PhantomData,
-        mem,
-        os::fd::RawFd,
-        ptr,
+        mem, ptr,
         sync::atomic::{AtomicU32, Ordering},
     },
 };
 
-pub(crate) struct RingConsumer {
+pub struct RingConsumer {
     producer: *mut AtomicU32,
     cached_producer: u32,
     consumer: *mut AtomicU32,
@@ -58,7 +55,7 @@ impl RingConsumer {
     }
 }
 
-pub(crate) struct RingProducer {
+pub struct RingProducer {
     producer: *mut AtomicU32,
     cached_producer: u32,
     consumer: *mut AtomicU32,
@@ -112,6 +109,11 @@ pub struct RingMmap<T> {
     pub desc: *mut T,
 }
 
+// RingMmap is Send/Sync only if used in one-writer / one-reader pattern,
+// and synchronization (sync/commit) is enforced externally.
+unsafe impl<T: Send> Send for RingMmap<T> {}
+unsafe impl<T: Sync> Sync for RingMmap<T> {}
+
 impl<T> Drop for RingMmap<T> {
     fn drop(&mut self) {
         unsafe {
@@ -120,7 +122,7 @@ impl<T> Drop for RingMmap<T> {
     }
 }
 
-pub(crate) unsafe fn mmap_ring<T>(name: &str, size: usize) -> Result<RingMmap<T>, io::Error> {
+pub unsafe fn mmap_ring<T>(name: &str, size: usize) -> Result<RingMmap<T>, io::Error> {
     let entry_size = mem::size_of::<T>();
     let header_size = mem::size_of::<AtomicU32>() * 2; // producer and consumer
     let data_size = size * entry_size;
@@ -167,7 +169,7 @@ pub struct PacketWriter<T: Copy> {
 }
 
 impl<T: Copy> PacketWriter<T> {
-    pub(crate) fn new(mmap: RingMmap<T>, size: u32) -> Self {
+    pub fn new(mmap: RingMmap<T>, size: u32) -> Self {
         debug_assert!(size.is_power_of_two());
         Self {
             producer: RingProducer::new(mmap.producer, mmap.consumer, size),
@@ -207,7 +209,7 @@ pub struct PacketReader<T: Copy> {
 }
 
 impl<T: Copy> PacketReader<T> {
-    pub(crate) fn new(mmap: RingMmap<T>, size: u32) -> Self {
+    pub fn new(mmap: RingMmap<T>, size: u32) -> Self {
         debug_assert!(size.is_power_of_two());
         Self {
             consumer: RingConsumer::new(mmap.producer, mmap.consumer),
@@ -231,9 +233,12 @@ impl<T: Copy> PacketReader<T> {
     }
 }
 
+unsafe impl<T: Copy + Send> Send for PacketWriter<T> {}
+unsafe impl<T: Copy + Send> Send for PacketReader<T> {}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct Packet([u8; 1024]);
+pub struct Packet(pub [u8; 1024]);
 
 #[cfg(test)]
 mod test {

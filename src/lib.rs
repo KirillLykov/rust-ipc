@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+pub mod ale_ringbuf;
+pub mod ale_runner;
 pub mod iceoryx;
 pub mod mmap;
 pub mod pipes;
