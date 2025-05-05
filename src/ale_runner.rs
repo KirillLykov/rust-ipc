@@ -13,7 +13,7 @@ use {
 
 pub const SHM_REQUEST: &str = "/shm_ipc_request";
 pub const SHM_RESPONSE: &str = "/shm_ipc_response";
-pub const RING_CAPACITY: usize = 64;
+pub const RING_CAPACITY: usize = 1024;
 
 pub struct AleSender {
     request_writer: PacketWriter<Packet>,
@@ -38,7 +38,7 @@ impl AleSender {
                 self.request_writer.commit();
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_micros(1));
+            //std::thread::sleep(Duration::from_micros(1));
         }
     }
 }
@@ -64,7 +64,6 @@ impl AleFeedback {
                 self.response_reader.commit();
                 return Ok(1024);
             }
-            std::thread::sleep(Duration::from_micros(1));
         }
     }
 }
@@ -125,7 +124,7 @@ impl AleRunner {
                 let mut sent = 0;
                 while sent < n {
                     if sender.send(&request_data).is_err() {
-                        std::thread::sleep(Duration::from_millis(1));
+                        //std::thread::sleep(Duration::from_millis(1));
                         continue;
                     };
                     sent += 1;
@@ -142,7 +141,7 @@ impl AleRunner {
                                 break l;
                             }
                             Err(_) => {
-                                std::thread::sleep(Duration::from_millis(1));
+                                //std::thread::sleep(Duration::from_millis(1));
                                 continue;
                             }
                         }

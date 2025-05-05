@@ -28,25 +28,27 @@ fn main() {
 
     loop {
         reader.sync(true);
-        if let Some(pkt) = reader.read() {
-            #[cfg(debug_assertions)]
-            assert_eq!(&pkt.0[..data_size], &request_data[..data_size]);
+        loop {
+            if let Some(pkt) = reader.read() {
+                #[cfg(debug_assertions)]
+                assert_eq!(&pkt.0[..data_size], &request_data[..data_size]);
 
-            reader.commit();
+                //reader.commit();
 
-            let mut response = Packet([0; 1024]);
-            response.0[..data_size].copy_from_slice(&response_data);
+                let mut response = Packet([0; 1024]);
+                response.0[..data_size].copy_from_slice(&response_data);
 
-            loop {
-                writer.sync(true);
-                if writer.write(response).is_ok() {
-                    writer.commit();
-                    break;
+                loop {
+                    writer.sync(true);
+                    if writer.write(response).is_ok() {
+                        writer.commit();
+                        break;
+                    }
+                    //std::thread::sleep(Duration::from_micros(1));
                 }
-                std::thread::sleep(Duration::from_micros(1));
+            } else {
+                break;
             }
-        } else {
-            std::thread::sleep(Duration::from_micros(1));
         }
     }
 }
