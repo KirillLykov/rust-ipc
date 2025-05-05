@@ -123,8 +123,10 @@ impl<T> Drop for RingMmap<T> {
 }
 
 pub unsafe fn mmap_ring<T>(name: &str, size: usize) -> Result<RingMmap<T>, io::Error> {
+    const CACHE_LINE_SIZE: usize = 64;
+
     let entry_size = mem::size_of::<T>();
-    let header_size = mem::size_of::<AtomicU32>() * 2; // producer and consumer
+    let header_size = CACHE_LINE_SIZE * 2; // one full line for each of producer and consumer
     let data_size = size * entry_size;
     let mmap_len = header_size + data_size;
 
@@ -150,8 +152,10 @@ pub unsafe fn mmap_ring<T>(name: &str, size: usize) -> Result<RingMmap<T>, io::E
         return Err(io::Error::last_os_error());
     }
 
+    // mmap layout:
     let producer = map_addr as *mut AtomicU32;
-    let consumer = map_addr.add(mem::size_of::<AtomicU32>()) as *mut AtomicU32;
+    let consumer = map_addr.add(CACHE_LINE_SIZE) as *mut AtomicU32;
+
     let desc = map_addr.add(header_size) as *mut T;
     Ok(RingMmap {
         mmap: map_addr as *const u8,
@@ -236,7 +240,7 @@ impl<T: Copy> PacketReader<T> {
 unsafe impl<T: Copy + Send> Send for PacketWriter<T> {}
 unsafe impl<T: Copy + Send> Send for PacketReader<T> {}
 
-#[repr(C)]
+#[repr(C, align(64))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Packet(pub [u8; 1024]);
 

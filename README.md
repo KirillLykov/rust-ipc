@@ -1,3 +1,12 @@
+# Extended to use ringbuffer from xdp crate
+
+Note that for now I hardcoded the size of the packet to 1KB here. So only `kb-max == 0` works for aleringbuf.
+
+```shell
+cargo build --release
+cargo run  --release -- -n 1000 --method aleringbuf  --kb-max 0
+```
+
 # rust-ipc
 
 This is a small proof of concept project for different approaches to Interprocess Communication in Rust.
